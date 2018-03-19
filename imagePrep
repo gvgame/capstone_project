@@ -1,0 +1,151 @@
+Image Preparation Perspective:
+
+
+Objectives for Image Preparation and what to take a look at:
+1. Camera Calibration
+    https://docs.opencv.org/3.1.0/dc/dbb/tutorial_py_calibration.html
+2. Lighting Composition
+    https://docs.opencv.org/3.2.0/d5/daf/tutorial_py_histogram_equalization.html
+3. Light Reflections
+    https://stackoverflow.com/questions/44569067/reflection-reduction-in-image
+    http://answers.opencv.org/question/179998/how-to-remove-these-small-glare-from-the-image/
+4. De-noising
+    https://docs.opencv.org/3.3.1/d5/d69/tutorial_py_non_local_means.html
+
+
+
+
+I. CAMERA CALIBRATION
+      Assuming if the photos given to use weren't already calibrated, we need to
+      calibrate the original photos. The reason why to do this, is because one of
+      the importance of working with photo samples and measuring data from rock
+      samples, we need to get rid of the camera distortion. Camera distortion
+      can affect the analysis, which may lead to inaccurate results.
+
+import numpy as np
+import cv2
+import glob
+
+# termination criteria
+criteria = (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, 30, 0.001)
+
+# prepare object points, like (0,0,0), (1,0,0), (2,0,0) ....,(6,5,0)
+objp = np.zeros((6*7,3), np.float32)
+objp[:,:2] = np.mgrid[0:7,0:6].T.reshape(-1,2)
+
+# Arrays to store object points and image points from all the images.
+objpoints = [] # 3d point in real world space
+imgpoints = [] # 2d points in image plane.
+
+images = glob.glob('*.jpg')
+for fname in images:
+img = cv2.imread(fname)
+     gray = cv2.cvtColor(img,cv2.COLOR_BGR2GRAY)
+
+     # Find the chess board corners
+     ret, corners = cv2.findChessboardCorners(gray, (7,6),None)
+
+     # If found, add object points, image points (after refining them)
+     if ret == True:
+         objpoints.append(objp)
+
+         cv2.cornerSubPix(gray,corners,(11,11),(-1,-1),criteria)
+         imgpoints.append(corners)
+
+         # Draw and display the corners
+         cv2.drawChessboardCorners(img, (7,6), corners2,ret)
+         cv2.imshow('img',img)
+         cv2.waitKey(500)
+
+ cv2.destroyAllWindows()
+
+
+
+II. LIGHTING Composition
+
+  HISTOGRAM EQUALIZATION:
+
+      Having the system run through a process of making sure the photo sample has correct
+      photo lighting, can be done through OpenCV's Histogram Equalization. Modifying the photo
+      samples with Histogram Equalization enables the power to adjust the contrast, lighting,
+      and definition of the rock sample.
+
+      Understanding of a histogram: https://en.wikipedia.org/wiki/Histogram_equalization
+
+      Pros of performing a histogram equalization: Definition increased, correct and accurate results.
+      Cons of performing a histogram equalization: Parts of images that were already correct may have a defect.
+
+
+      To resolve the con: look into CLAHE ( Contrast Limited Adaptive Histogram Equalization)
+      Using adaptive historgram equalization, helps combine and automate what should be fixed and isnt.
+
+
+      Removing bad lighting conditions or shadow effects images:
+      We can convert images into YUV image and then perform a histogram equalization
+      on the Y channel. After that, we can convert it back to RGB if needed.
+
+
+1 import numpy as np
+2 import cv2
+3
+4 img = cv2.imread('tsukuba_l.png',0)
+5
+6 # create a CLAHE object (Arguments are optional).
+7 clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8,8))
+8 cl1 = clahe.apply(img)
+9
+10 cv2.imwrite('clahe_2.jpg',cl1)
+
+
+III. Light Reflections
+
+      Assuming if the rock samples are taken through a stable neutral lighting background,
+      then there isn't a need to fix or proceed forward to handling a photo that might have glares or
+      light reflections.
+
+      If there is, Usually with Light Reflections can be handled with by converting photos to YHB. Only problem,
+      devalues the photo quality overall.
+
+
+IV. IMAGE DE-noising
+
+      Images may have a chance of containing grain or noise, which is also part of a camera flaw.
+      Solution for this, is performing smoothing techniques like Gaussian Blurring, Median Blurring,
+      and any kind of blurring for anyone's preference. Since we are dealing with rock color photo samples
+      then it's important to remove noise in case of identifying the rock's composition.
+
+
+
+
+  Sample Code:
+import numpy as np
+import cv2
+
+from matplotlib import pyplot as plt
+cap = cv2.VideoCapture('vtest.avi')
+
+# create a list of first 5 frames
+img = [cap.read()[1] for i in xrange(5)]
+
+# convert all to grayscale
+gray = [cv2.cvtColor(i, cv2.COLOR_BGR2GRAY) for i in img]
+
+# convert all to float64
+gray = [np.float64(i) for i in gray]
+
+# create a noise of variance 25
+noise = np.random.randn(*gray[1].shape)*10
+
+# Add this noise to images
+noisy = [i+noise for i in gray]
+
+# Convert back to uint8
+noisy = [np.uint8(np.clip(i,0,255)) for i in noisy]
+
+# Denoise 3rd frame considering all the 5 frames
+dst = cv2.fastNlMeansDenoisingMulti(noisy, 2, 5, None, 4, 7, 35)
+
+plt.subplot(131),plt.imshow(gray[2],'gray')
+plt.subplot(132),plt.imshow(noisy[2],'gray')
+plt.subplot(133),plt.imshow(dst,'gray')
+plt.show()
