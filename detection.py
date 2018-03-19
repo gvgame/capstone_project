@@ -18,12 +18,9 @@ def getImagePath(img_num):
     the different background types on the performance of the detection
     algorithm
 '''
-    if img_num < 10:
-        path = "img/00" + str(img_num) + "c.png"
-    elif img_num < 100:
-        path = "img/0" + str(img_num) + "c.png"
-    else:
-        path = "img/" + str(img_num) + "c.png"
+
+    # Zero-pad image number to obtain 3 digit path
+    path = "img/" + "%03d" % (img_num) + "c.png"
 
     return path
 
